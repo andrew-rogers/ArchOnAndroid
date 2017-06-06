@@ -16,6 +16,18 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+# Print string on stderr
+error()
+{
+  echo "$1" 1>&2
+}
+
+# Print string on stderr
+msg()
+{
+  echo "$1" 1>&2
+}
+
 aoa_include busybox
 
 # TODO: . the scripts in order

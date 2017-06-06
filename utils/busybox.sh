@@ -29,27 +29,34 @@ BB=busybox
 
 UTILS_BIN=$AOA_DIR/utils/bin
 export PATH=$UTILS_BIN:$PATH
+export BB_DL=blah
 
-aoa_find_busybox() {
+aoa_busybox_downloaded() {
   local bb
+  echo "$BB_DLS" | while read -r bb
+  do
+    [ -e "$bb" ] && echo "$bb" && return 0
+  done
+  return 1
+}
+
+aoa_busybox_find() {
 
   # Check if busybox already downloaded
-  echo "$BB_DLS" | while read -r bb
-  do
-    [ -e "$bb" ] && echo "$bb" && return 0
-  done
+  BB_DL=$(aoa_busybox_downloaded)
 
-  # If we get here then assume we need to download busybox
-  echo "$BB_URLS" | while read -r bb
-  do
-    aoa_wget $bb /sdcard/Download/ && break
-  done
+  if [ ! -e "$BB_DL" ]; then
 
- # Check if busybox downloaded successfully
-  echo "$BB_DLS" | while read -r bb
-  do
-    [ -e "$bb" ] && echo "$bb" && return 0
-  done
+    # If we get here then assume we need to download busybox
+    local bb
+    echo "$BB_URLS" | while read -r bb
+    do
+      aoa_wget $bb /sdcard/Download/ && break
+    done
+
+    # Check if busybox downloaded successfully
+    BB_DL=$(aoa_busybox_downloaded)
+  fi
 }
 
 aoa_busybox_install() {
@@ -57,12 +64,12 @@ aoa_busybox_install() {
   then
     chmod 755 "$UTILS_BIN/$BB"
   else # not in $UTILS_BIN/$BB so copy
-    local bb=$(aoa_find_busybox)
-    [ ! -f "$bb" ] && error "Can't find: $BB" && return 1
-    msg "Found busybox at: $bb"
+    aoa_busybox_find
+    [ ! -f "$BB_DL" ] && error "Can't find: $BB" && return 1
+    msg "Found busybox at: $BB_DL"
     
     # Android may not have cp, use cat
-    [ "$bb" != "$TERMAPP_DIR/$BB" ] && cat "$bb" > "$TERMAPP_DIR/$BB"
+    cat "$BB_DL" > "$TERMAPP_DIR/$BB"
     chmod 755 "$TERMAPP_DIR/$BB"
 
     # if $UTILS_BIN dir doesn't exist create it
@@ -80,33 +87,23 @@ aoa_busybox_install() {
 }
 
 aoa_busybox_symlink() {
-  local pdir=$PWD
-  cd "$UTILS_BIN"
-  $UTILS_BIN/$BB ln -s $BB $1
-  cd "$pdir"
+  if [ ! -e "$UTILS_BIN/$1" ]; then
+    local pdir=$PWD
+    cd "$UTILS_BIN"
+    $UTILS_BIN/$BB ln -s $BB $1
+    cd "$pdir"
+  fi
 }
 
 aoa_busybox_symlinks() {
   for app in $($UTILS_BIN/$BB --list)
   do
-    echo "> $app"
     aoa_busybox_symlink "$app"
   done
 }
 
 aoa_busybox_check() {
   $UTILS_BIN/$BB true 2> /dev/null || aoa_busybox_install
-}
-
-# Print string on stderr
-error()
-{
-  echo "$1" 1>&2
-}
-# Print string on stderr
-msg()
-{
-  echo "$1" 1>&2
 }
 
 aoa_busybox_check
