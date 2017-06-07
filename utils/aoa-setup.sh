@@ -19,41 +19,47 @@
 # Specify the wget filename as in the /sdcard/Download directory.
 WGET_DL=/sdcard/Download/wget-armeabi
 
-# Specify the wget filename when installed
-WGET=wget
-
 # Find the directory of the terminal app. The terminal app may only be able 
 # to write to and execute from its directory or sub directory.
 TERMAPP_DIR=/data/data/$(cat /proc/$PPID/cmdline)
 
 AOA_DIR=$TERMAPP_DIR/aoa
+UTILS_BIN=$AOA_DIR/utils/bin
+RET_STR=""
 
 aoa_wget_install() {
-  if [ -e "$WGET_PATH" ]
+  if [ -e "$TERMAPP_DIR/wget" ]
   then
-    chmod 755 "$WGET_PATH"
-  else # not in $WGET_PATH so copy
+    chmod 755 "$TERMAPP_DIR/wget"
+  else # not in $TERMAPP_DIR/wget so copy from download directory
     [ ! -f "$WGET_DL" ] && echo "Can't find: $WGET_DL" && return 1
     echo "Found wget at: $bb"
     
     # Android may not have cp, use cat
-    cat "$WGET_DL" > "$TERMAPP_DIR/$WGET"
-    chmod 755 "$TERMAPP_DIR/$WGET"
+    cat "$WGET_DL" > "$TERMAPP_DIR/wget"
+    chmod 755 "$TERMAPP_DIR/wget"
+  fi
+}
+
+aoa_wget_find() {
+  RET_STR=""
+  if [ -e "$UTILS_BIN/wget" ]; then
+    RET_STR=$UTILS_BIN/wget
+  elif [ -e "$TERMAPP_DIR/wget" ]; then
+    RET_STR=$TERMAPP_DIR/wget
   fi
 }
 
 aoa_wget_check() {
-  if [ -e "$AOA_DIR/utils/bin/$WGET" ]; then
-    WGET_PATH=$AOA_DIR/utils/bin/$WGET
-  fi
-  
-  $WGET_PATH --help > /dev/null || aoa_wget_install
+  aoa_wget_find
+  $RET_STR --help > /dev/null || aoa_wget_install
 }
 
 aoa_wget() {
   local url=$1
   local dst_dir=$2
-  $WGET_PATH --no-clobber --no-check-certificate --directory-prefix=$dst_dir $url
+  aoa_wget_find
+  $RET_STR --no-clobber --no-check-certificate --directory-prefix=$dst_dir $url
 }
 
 aoa_include() {
@@ -61,7 +67,6 @@ aoa_include() {
   . $AOA_DIR/utils/$1.sh
 }
 
-export WGET_PATH=$TERMAPP_DIR/$WGET
 export AOA_DIR
 aoa_wget_check
 aoa_include second-stage
