@@ -27,9 +27,7 @@ https://busybox.net/downloads/binaries/1.26.2-defconfig-multiarch/busybox-armv6l
 # Specify the busybox filename when installed
 BB=busybox
 
-UTILS_BIN=$AOA_DIR/utils/bin
 export PATH=$UTILS_BIN:$PATH
-export BB_DL=blah
 
 aoa_busybox_downloaded() {
   local bb
@@ -84,6 +82,14 @@ aoa_busybox_install() {
   
   msg "Making symlinks for busybox applets, could take a while."
   aoa_busybox_symlinks
+  aoa_busybox_replace_wget
+}
+
+aoa_busybox_replace_wget() {
+  # Replace the busybox wget with the Android compatible wget
+  if [ -e "$TERMAPP_DIR/wget" ]; then
+    $UTILS_BIN/$BB mv $TERMAPP_DIR/wget $UTILS_BIN/wget
+  fi 
 }
 
 aoa_busybox_symlink() {
