@@ -16,9 +16,9 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-# Specify the busybox filenames as in the /sdcard/Download directory.
-BB_DLS="/sdcard/Download/busybox-armv7l
-/sdcard/Download/busybox-armv6l"
+# Specify the busybox filenames that might already be in cache directory.
+BB_DLS="$AOA_CACHE/busybox-armv7l
+$AOA_CACHE/busybox-armv6l"
 
 # Specify busybox URLs
 BB_URLS="https://github.com/windflyer/android_binaries/raw/master/busybox-armv7l
@@ -49,10 +49,9 @@ aoa_busybox_find() {
     local bb
     echo "$BB_URLS" | while read -r bb
     do
-      aoa_wget $bb /sdcard/Download/ && break
+      aoa_download $bb && break
     done
 
-    # Check if busybox downloaded successfully
     BB_DL=$(aoa_busybox_downloaded)
   fi
 }
@@ -67,16 +66,16 @@ aoa_busybox_install() {
     msg "Found busybox at: $BB_DL"
     
     # Android may not have cp, use cat
-    cat "$BB_DL" > "$TERMAPP_DIR/$BB"
-    chmod 755 "$TERMAPP_DIR/$BB"
+    cat "$BB_DL" > "$WRITABLE_DIR/$BB"
+    chmod 755 "$WRITABLE_DIR/$BB"
 
     # if $UTILS_BIN dir doesn't exist create it
-    [ -e "$UTILS_BIN" ] || $TERMAPP_DIR/$BB mkdir -p "$UTILS_BIN"
+    [ -e "$UTILS_BIN" ] || $WRITABLE_DIR/$BB mkdir -p "$UTILS_BIN"
 
     # mv busybox to $UTILS_BIN dir
-    cat "$TERMAPP_DIR/$BB" > "$UTILS_BIN/$BB"
+    cat "$WRITABLE_DIR/$BB" > "$UTILS_BIN/$BB"
     chmod 755 "$UTILS_BIN/$BB"
-    [ -e "$UTILS_BIN/$BB" ] && $UTILS_BIN/$BB rm "$TERMAPP_DIR/$BB"
+    [ -e "$UTILS_BIN/$BB" ] && $UTILS_BIN/$BB rm "$WRITABLE_DIR/$BB"
     [ -e "$UTILS_BIN/$BB" ] && msg "Relocated busybox to: $UTILS_BIN/$BB"
   fi
   
@@ -87,8 +86,8 @@ aoa_busybox_install() {
 
 aoa_busybox_replace_wget() {
   # Replace the busybox wget with the Android compatible wget
-  if [ -e "$TERMAPP_DIR/wget" ]; then
-    $UTILS_BIN/$BB mv $TERMAPP_DIR/wget $UTILS_BIN/wget
+  if [ -e "$WRITABLE_DIR/wget" ]; then
+    $UTILS_BIN/$BB mv $WRITABLE_DIR/wget $UTILS_BIN/wget
   fi 
 }
 
