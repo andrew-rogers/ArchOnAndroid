@@ -23,10 +23,8 @@ aoa() {
   local cmd=$1
   shift
 
-  if [ "$cmd" != "find_writable_install_dir" ]; then
-    local WRITABLE_DIR=$(aoa find_writable_install_dir)
-    local UTILS_BIN=$AOA_DIR/utils/bin
-  fi
+  local WRITABLE_DIR=${AOA_DIR%/*}
+  local UTILS_BIN=$AOA_DIR/utils/bin
 
   case $cmd in
 
@@ -145,6 +143,7 @@ aoa() {
 }
 
 if [ -n "$AOA_SETUP" ]; then
+  # AOA_SETUP is defined so therefore we are being sourced from another script
   WRITABLE_DIR=${AOA_DIR%/*}
   UTILS_BIN=$AOA_DIR/utils/bin
   AOA_CACHE=$(aoa find_writable_download_dir)
@@ -153,5 +152,6 @@ else
   aoa check_wget > /dev/null
   aoa check_busybox
   aoa set_path
+  cd $AOA_DIR
 fi
 
