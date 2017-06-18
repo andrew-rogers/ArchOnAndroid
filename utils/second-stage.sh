@@ -16,6 +16,13 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+AOA_SETUP=$1
+shift
+CMD=$1
+shift
+
+. $AOA_SETUP
+
 # Print string on stderr
 error()
 {
@@ -28,6 +35,9 @@ msg()
   echo "$1" 1>&2
 }
 
-aoa_include busybox
+case $CMD in
+  "check_busybox" )
+    . $(aoa get_script busybox)
+  ;;
+esac
 
-# TODO: . the scripts in order

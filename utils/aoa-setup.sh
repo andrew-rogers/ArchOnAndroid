@@ -16,91 +16,142 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-# Path for the user downloaded wget
-WGET_DL="/sdcard/Download/wget-armeabi"
+aoa() {
+  # Path for the user downloaded wget
+  local WGET_DL="/sdcard/Download/wget-armeabi"
 
-# --- Find out where ArchOnAndroid can be installed ---
-# When deployed on an Android terminal app (eg. connectbot) it is
-# possible that the current directory is not writable. The terminal app's
-# install directory should be writable so we install there. However, we first
-# check if the current directory is writable.
-if [ -w "$PWD" ]; then
-  # We can write to the current dir so install here. This is useful for
-  # installing and testing on non-Android systems.
-  WRITABLE_DIR=$PWD;
-else
-  # Find the directory of the terminal app. The terminal app may only be able 
-  # to write to and execute from its directory or sub directory.
-  WRITABLE_DIR=/data/data/$(cat /proc/$PPID/cmdline)
-fi
+  local cmd=$1
+  shift
 
-# --- Find out where to cache downloads ---
-if [ -w "$HOME" ]; then
-  AOA_CACHE=$HOME/.ArchOnAndroid/cache
-elif [ -w "/sdcard" ]; then
-  AOA_CACHE=/sdcard/ArchOnAndroid/cache
-fi
+  if [ "$cmd" != "find_writable_install_dir" ]; then
+    local WRITABLE_DIR=$(aoa find_writable_install_dir)
+    local UTILS_BIN=$AOA_DIR/utils/bin
+  fi
 
-AOA_DIR=$WRITABLE_DIR/ArchOnAndroid
-UTILS_BIN=$AOA_DIR/utils/bin
-RET_STR=""
+  case $cmd in
 
-aoa_wget_install() {
-  if [ -e "$WRITABLE_DIR/wget" ]; then
-    chmod 755 "$WRITABLE_DIR/wget"
-  else # not in $WRITABLE_DIR/wget so copy from download directory
-    [ ! -f "$WGET_DL" ] && echo "Can't find: $WGET_DL" && return 1
-    echo "Found wget at: $WGET_DL"
+    "set_path" )
+      if [ -d "$AOA_DIR" ]; then
+        PATH=$UTILS_BIN:$AOA_DIR/usr/bin
+      fi
+    ;;
+
+    "cd" )
+      if [ -d "$AOA_DIR" ]; then
+        cd "$AOA_DIR"
+      else
+        cd "$WRITABLE_DIR"
+      fi
+    ;;
+
+    "find_writable_install_dir" )
+      # --- Find out where ArchOnAndroid can be installed ---
+      # When deployed on an Android terminal app (eg. connectbot) it is
+      # possible that the current directory is not writable. The terminal app's
+      # install directory should be writable so we install there. However, we first
+      # check if the current directory is writable.
+      local here=${PWD%%/ArchOnAndroid*}
+      if [ -w "$here" ]; then
+        # We can write to the current dir so install here. This is useful for
+        # installing and testing on non-Android systems.
+        echo "$here";
+      else
+        # Find the directory of the terminal app. The terminal app may only be able 
+        # to write to and execute from its directory or sub directory.
+        echo "/data/data/$(cat /proc/$PPID/cmdline)"
+      fi
+    ;;
+
+    "find_writable_download_dir" )
+      # --- Find out where to cache downloads ---
+      if [ -w "$HOME" ]; then
+        echo "$HOME/.ArchOnAndroid/cache"
+      elif [ -w "/sdcard" ]; then
+        echo "/sdcard/ArchOnAndroid/cache"
+      fi
+    ;;
+
+    "find_wget" )
+      if [ -e "$UTILS_BIN/wget" ]; then
+        echo "$UTILS_BIN/wget"
+      elif [ -e "$WRITABLE_DIR/wget" ]; then
+        echo "$WRITABLE_DIR/wget"
+      elif [ -e "/usr/bin/wget" ]; then
+        echo "/usr/bin/wget"
+      fi
+    ;;
+
+    "install_wget" )
+      if [ -e "$WRITABLE_DIR/wget" ]; then
+        chmod 755 "$WRITABLE_DIR/wget"
+      else # not in $WRITABLE_DIR/wget so copy from download directory
+        [ ! -f "$WGET_DL" ] && echo "Can't find: $WGET_DL" && return 1
+        echo "Found wget at: $WGET_DL"
     
-    # Android may not have cp, use cat
-    cat "$WGET_DL" > "$WRITABLE_DIR/wget"
-    chmod 755 "$WRITABLE_DIR/wget"
-  fi
+        # Android may not have cp, use cat
+        cat "$WGET_DL" > "$WRITABLE_DIR/wget"
+        chmod 755 "$WRITABLE_DIR/wget"
+      fi
+    ;;
+
+    "check_wget" )
+      $(aoa find_wget) --help > /dev/null || aoa install_wget
+      aoa find_wget
+    ;;
+
+    "download" )
+      local url=$1
+      local dst_dir=$(aoa find_writable_download_dir)
+      if [ -n "$2" ]; then
+        dst_dir=$dst_dir/$2
+      fi
+      local fn=${url##*/} # Get the filename from the end of the URL.
+
+      # If not already downloaded to cache then download
+      if [ ! -e "$dst_dir/$fn" ]; then
+        $(aoa find_wget) --no-clobber --no-check-certificate --directory-prefix=$dst_dir $url
+      fi
+
+      # If downloaded then return the path
+      if [ -e "$dst_dir/$fn" ]; then
+        echo "$dst_dir/$fn"
+      fi
+    ;;
+
+    "get_script" )
+      local script=$AOA_DIR/utils/$1.sh
+      if [ ! -e "$script" ]; then
+        script=$(aoa download https://github.com/andrew-rogers/ArchOnAndroid/raw/master/utils/$1.sh utils)
+      fi
+      shift
+      echo "$script"
+    ;;
+    
+    "run_script" )
+      local script=$AOA_DIR/utils/$1.sh
+      if [ ! -e "$script" ]; then
+        script=$(aoa download https://github.com/andrew-rogers/ArchOnAndroid/raw/master/utils/$1.sh utils)
+      fi
+      shift
+      echo "sh $script $*"
+    ;;
+
+    * )
+      # Run the second-stage script for commands not defined here
+      local script=$(aoa get_script second-stage)
+      local aoa_setup=$(aoa get_script aoa-setup)
+      sh $script $aoa_setup $cmd $*
+  esac
 }
 
-aoa_wget_find() {
-  RET_STR=""
-  if [ -e "$UTILS_BIN/wget" ]; then
-    RET_STR=$UTILS_BIN/wget
-  elif [ -e "$WRITABLE_DIR/wget" ]; then
-    RET_STR=$WRITABLE_DIR/wget
-  elif [ -e "/usr/bin/wget" ]; then
-    RET_STR=/usr/bin/wget
-  fi
-}
+if [ -n "$AOA_SETUP" ]; then
+  WRITABLE_DIR=${AOA_DIR%/*}
+  UTILS_BIN=$AOA_DIR/utils/bin
+  AOA_CACHE=$(aoa find_writable_download_dir)
+else
+  export AOA_DIR=$(aoa find_writable_install_dir)/ArchOnAndroid
+  aoa check_wget > /dev/null
+  aoa check_busybox
+  aoa set_path
+fi
 
-aoa_wget_check() {
-  aoa_wget_find
-  $RET_STR --help > /dev/null || aoa_wget_install
-}
-
-aoa_download() {
-  RET_STR=""
-  local url=$1
-  local dst_dir=$AOA_CACHE/$2
-  local fn=${url##*/} # Get the filename from the end of the URL.
-
-  # If not already downloaded to cache then download
-  if [ ! -e "$dst_dir/$fn" ]; then
-    aoa_wget_find
-    $RET_STR --no-clobber --no-check-certificate --directory-prefix=$dst_dir $url
-  fi
-
-  # If downloaded then return the path
-  if [ -e "$dst_dir/$fn" ]; then
-    RET_STR="$dst_dir/$fn"
-  fi
-}
-
-aoa_include() {
-  if [ ! -e "$AOA_DIR/utils/$1.sh" ]; then
-    aoa_download https://github.com/andrew-rogers/ArchOnAndroid/raw/master/utils/$1.sh utils
-    . $RET_STR
-  else
-  . $AOA_DIR/utils/$1.sh
-  fi
-}
-
-export AOA_DIR
-aoa_wget_check
-aoa_include second-stage

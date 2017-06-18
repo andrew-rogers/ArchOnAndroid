@@ -27,8 +27,6 @@ https://busybox.net/downloads/binaries/1.26.2-defconfig-multiarch/busybox-armv6l
 # Specify the busybox filename when installed
 BB=busybox
 
-export PATH=$UTILS_BIN:$PATH
-
 aoa_busybox_downloaded() {
   local bb
   echo "$BB_DLS" | while read -r bb
@@ -49,7 +47,7 @@ aoa_busybox_find() {
     local bb
     echo "$BB_URLS" | while read -r bb
     do
-      aoa_download $bb && break
+      aoa download $bb && break
     done
 
     BB_DL=$(aoa_busybox_downloaded)
@@ -85,8 +83,11 @@ aoa_busybox_install() {
 }
 
 aoa_busybox_replace_wget() {
-  # Replace the busybox wget with the Android compatible wget
-  if [ -e "$WRITABLE_DIR/wget" ]; then
+  if [ -e "/usr/bin/wget" ]; then
+    # Replace the busybox wget with the system wget
+    $UTILS_BIN/$BB cp /usr/bin/wget $UTILS_BIN/wget 
+  elif [ -e "$WRITABLE_DIR/wget" ]; then
+    # Replace the busybox wget with the Android compatible wget
     $UTILS_BIN/$BB mv $WRITABLE_DIR/wget $UTILS_BIN/wget
   fi 
 }
@@ -112,7 +113,3 @@ aoa_busybox_check() {
 }
 
 aoa_busybox_check
-
-export AOA_ARCH=$($UTILS_BIN/$BB uname -m)
-export PATH=$UTILS_BIN:$AOA_DIR/usr/bin:$AOA_DIR/bin
-cd "$AOA_DIR"
