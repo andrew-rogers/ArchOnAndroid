@@ -16,36 +16,16 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-AOA_SETUP=$1
-shift
-CMD=$1
-shift
-
-# Include the functions from the setup script
-. $AOA_SETUP
-
-# Include busybox functions
-. $(aoa get_script busybox)
-
-# Include package manager functions
-. $(aoa get_script package-manager)
-
-# Print string on stderr
-error()
-{
-  echo "$1" 1>&2
+get_db() {
+  local db=$(aoa download http://mirror.archlinuxarm.org/aarch64/$1/$1.db packages)
+  if [ -f "$db" ]; then
+    local pdir=$PWD
+    local db_dir=$AOA_DIR/var/lib/pacman/sync/$1.d
+    mkdir -p "$db_dir"
+    cd "$db_dir"
+    echo "Extracting $1 packages database."
+    tar -zxvf "$db" > /dev/null
+  fi
 }
 
-# Print string on stderr
-msg()
-{
-  echo "$1" 1>&2
-}
-
-second_stage_check()
-{
-  busybox_check
-}
-
-$CMD $*
 

@@ -124,15 +124,6 @@ aoa() {
       shift
       echo "$script"
     ;;
-    
-    "run_script" )
-      local script=$AOA_DIR/utils/$1.sh
-      if [ ! -e "$script" ]; then
-        script=$(aoa download https://github.com/andrew-rogers/ArchOnAndroid/raw/master/utils/$1.sh utils)
-      fi
-      shift
-      echo "sh $script $*"
-    ;;
 
     * )
       # Run the second-stage script for commands not defined here
@@ -150,7 +141,7 @@ if [ -n "$AOA_SETUP" ]; then
 else
   export AOA_DIR=$(aoa find_writable_install_dir)/ArchOnAndroid
   aoa check_wget > /dev/null
-  aoa check_busybox
+  aoa second_stage_check
   aoa set_path
   cd $AOA_DIR
 fi

@@ -108,8 +108,7 @@ aoa_busybox_symlinks() {
   done
 }
 
-aoa_busybox_check() {
+busybox_check() {
   $UTILS_BIN/$BB true 2> /dev/null || aoa_busybox_install
 }
 
-aoa_busybox_check
