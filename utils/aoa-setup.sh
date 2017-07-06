@@ -104,6 +104,9 @@ aoa() {
         dst_dir=$dst_dir/$2
       fi
       local fn=${url##*/} # Get the filename from the end of the URL.
+      if [ -z "$fn" ]; then
+        fn=index.html
+      fi
 
       # If not already downloaded to cache then download
       if [ ! -e "$dst_dir/$fn" ]; then
@@ -140,6 +143,9 @@ if [ -n "$AOA_SETUP" ]; then
   AOA_CACHE=$(aoa find_writable_download_dir)
 else
   export AOA_DIR=$(aoa find_writable_install_dir)/ArchOnAndroid
+  export LD_LIBRARY_PATH=$AOA_DIR/lib
+  export LD_PRELOAD=
+  export C_INCLUDE_PATH=$AOA_DIR/usr/include
   aoa check_wget > /dev/null
   aoa second_stage_check
   aoa set_path
