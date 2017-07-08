@@ -27,14 +27,42 @@ install() {
   if [ -f "$fl" ]; then
     msg "Already installed: $pkg"
   else
-    pkg_download_expand $pkg
-    pkg_ammend_so_path $pkg
-    pkg_ammend_interp $pkg
+    install_deps "$pkg"
   fi
 }
 
 update() {
   get_package_lists
+}
+
+install_deps() {
+  local pkg="$1"
+  case "$pkg" in
+
+    "gcc" )
+      install libmpc
+      install mpfr
+      install gmp
+      install zlib
+      install linux-api-headers
+      install binutils
+      install_pkg gcc
+      local dst=$(find "$AOA_DIR/usr/lib/gcc/" | sed -n 's=/lto-wrapper==p')/specs
+      gcc -dumpspecs | sed "s=/lib=$AOA_DIR/lib=g" > "$dst"
+      test_gcc
+    ;;
+
+    * )
+      install_pkg "$pkg"
+
+  esac
+}
+
+install_pkg() {
+  local pkg="$1"
+  pkg_download_expand "$pkg"
+  pkg_ammend_so_path "$pkg"
+  pkg_ammend_interp "$pkg"
 }
 
 patchelf_check() {
@@ -140,7 +168,7 @@ get_index() {
 get_hrefs() {
   local url=$1
   echo $url | busybox grep '://' || url=http://mirror.archlinuxarm.org/$url
-  wget $url -O - | sed -n "s|.*href=\"||p" | sed "s|\".*||" | sed "s|^./||"
+  wget $url -O - | sed -n "s|.*href=\"||p" | sed "s|\".*||" | sed "s|^./||" | sed "s|%3A|:|"
 }
 
 get_package_list() {
@@ -183,4 +211,24 @@ get_package_rep_and_filename() {
       break
     fi
   done
+}
+
+test_gcc() {
+  local pdir="$PWD"
+  mkdir -p "$AOA_DIR/tests"
+  cd "$AOA_DIR/tests"
+  cat << EOF > test.c
+#include <stdio.h>
+
+int main( int argc, char *arg[] )
+{
+  printf("Compiled with GCC in ArchOnAndroid!\n");
+  return 0;
+}
+EOF
+
+  msg "Compiling test.c"
+  gcc test.c
+  ./a.out
+  cd "$pdir"
 }
