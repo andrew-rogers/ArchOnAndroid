@@ -21,11 +21,16 @@ PKG_DIR=$(aoa find_writable_download_dir)/packages
 URL_BASE="http://mirror.archlinuxarm.org/aarch64"
 
 install() {
-  local pkg=$1
   patchelf_check
-  pkg_download_expand $pkg
-  pkg_ammend_so_path $pkg
-  pkg_ammend_interp $pkg
+  local pkg=$1
+  local fl=$AOA_DIR/pkginfo/$pkg.files
+  if [ -f "$fl" ]; then
+    msg "Already installed: $pkg"
+  else
+    pkg_download_expand $pkg
+    pkg_ammend_so_path $pkg
+    pkg_ammend_interp $pkg
+  fi
 }
 
 update() {
@@ -33,18 +38,28 @@ update() {
 }
 
 patchelf_check() {
-  patchelf --version 2> /dev/null || patchelf_install
+  patchelf --version > /dev/null 2>&1 || patchelf_install
 }
 
 patchelf_install() {
   local PKGS=$(echo -e "filesystem\nglibc\ngcc-libs\npatchelf")
+  local pkg
   for pkg in $PKGS; do
     pkg_download_expand $pkg
   done
   local ld=$(find $AOA_DIR/lib/ld-linux*)
   cp "$AOA_DIR/usr/bin/patchelf" "$AOA_DIR/usr/bin/patchelf.orig"
   "$ld" "$AOA_DIR/usr/bin/patchelf.orig" --set-interpreter "$ld" "$AOA_DIR/usr/bin/patchelf"
-  patchelf --version && rm "$AOA_DIR/usr/bin/patchelf.orig"
+  patchelf --version > /dev/null 2>&1 
+  if [ $? -eq 0 ]; then
+    rm "$AOA_DIR/usr/bin/patchelf.orig"
+    for pkg in $PKGS; do
+      #[ "$pkg" != "patchelf" ] && pkg_ammend_interp $pkg
+      pkg_ammend_so_path "$pkg"
+    done
+  else
+    error "Could not successfully install patchelf."
+  fi    
 }
 
 pkg_download_expand() {
@@ -64,6 +79,7 @@ pkg_download_expand() {
     else
       # The actual package expansion
       local pdir=$PWD
+      msg "Expanding package: $fn"
       cd $AOA_DIR
       xzcat $fn | tar -xv > "$fl"
       mv .PKGINFO "pkginfo/$pkg.PKGINFO"
@@ -73,13 +89,35 @@ pkg_download_expand() {
 }
 
 pkg_ammend_so_path() {
-  echo
+  local pkg=$1
+  for fn in $(cat $AOA_DIR/pkginfo/$pkg.files); do
+    if [ -f "$fn" ]; then
+      # Check that file is not a symbolic link
+      if [ ! -L "$fn" ]; then
+        # Check filename is *.so
+        echo "$fn" | grep -q "[.]so$"
+        if [ $? -eq 0 ]; then
+          # Check file is not ELF
+          head -c4 "$fn" | grep -q "ELF"
+          if [ $? -ne 0 ]; then
+            mv "$fn" "$fn.orig"
+            cat "$fn.orig" | sed "s= /usr/lib/= $AOA_DIR/usr/lib/=g" > "$fn"
+          fi
+        fi
+      fi
+    fi
+  done
 }
 
 pkg_ammend_interp() {
   local pkg=$1
+  local ld=$(find $AOA_DIR/lib/ld-linux*)
   for fn in $(cat $AOA_DIR/pkginfo/$pkg.files); do
-    patch_elf --print-interpreter "$fn" && patch_elf --set-interpreter "$ARCH_LD" "$fn"
+    if [ -x "$fn" ]; then
+      if [ -f "$fn" ]; then
+        patchelf --set-interpreter "$ld" "$fn" 2> /dev/null
+      fi
+    fi
   done
 }
 
