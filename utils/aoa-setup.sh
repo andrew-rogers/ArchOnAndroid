@@ -93,7 +93,7 @@ aoa() {
     ;;
 
     "check_wget" )
-      $(aoa find_wget) --help > /dev/null || aoa install_wget
+      $(aoa find_wget) --help > /dev/null 2>&1 || aoa install_wget
       aoa find_wget
     ;;
 
