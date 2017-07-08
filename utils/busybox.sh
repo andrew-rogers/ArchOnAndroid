@@ -83,13 +83,20 @@ aoa_busybox_install() {
 }
 
 aoa_busybox_replace_wget() {
+  local WGET_PATH=$UTILS_BIN/wget-bin
+  $UTILS_BIN/$BB rm $UTILS_BIN/wget
   if [ -e "/usr/bin/wget" ]; then
-    # Replace the busybox wget with the system wget
-    $UTILS_BIN/$BB cp /usr/bin/wget $UTILS_BIN/wget 
+    WGET_PATH=/usr/bin/wget 
   elif [ -e "$WRITABLE_DIR/wget" ]; then
-    # Replace the busybox wget with the Android compatible wget
-    $UTILS_BIN/$BB mv $WRITABLE_DIR/wget $UTILS_BIN/wget
-  fi 
+    # Move the Android compatible wget
+    $UTILS_BIN/$BB mv $WRITABLE_DIR/wget $WGET_PATH
+  fi
+
+  # Create wrapper for wget
+  echo "#!$UTILS_BIN/sh" > $UTILS_BIN/wget
+  echo "" >> $UTILS_BIN/wget
+  echo "( unset LD_LIBRARY_PATH; $WGET_PATH \$* )" >> $UTILS_BIN/wget
+  $UTILS_BIN/$BB chmod +x $UTILS_BIN/wget
 }
 
 aoa_busybox_symlink() {

@@ -128,11 +128,20 @@ aoa() {
       echo "$script"
     ;;
 
+    "set_ld" )
+      # Only set LD_LIBRARY_PATH if wget wrapper exists
+      if [ -f "$AOA_DIR/utils/bin/wget" ]; then
+        export LD_LIBRARY_PATH=$AOA_DIR/lib
+        export LD_PRELOAD=
+      fi
+    ;;
+
     * )
       # Run the second-stage script for commands not defined here
       local script=$(aoa get_script second-stage)
       local aoa_setup=$(aoa get_script aoa-setup)
       sh $script $aoa_setup $cmd $*
+      aoa set_ld
   esac
 }
 
@@ -143,12 +152,11 @@ if [ -n "$AOA_SETUP" ]; then
   AOA_CACHE=$(aoa find_writable_download_dir)
 else
   export AOA_DIR=$(aoa find_writable_install_dir)/ArchOnAndroid
-  export LD_LIBRARY_PATH=$AOA_DIR/lib
-  export LD_PRELOAD=
   export C_INCLUDE_PATH=$AOA_DIR/usr/include
   aoa check_wget > /dev/null
   aoa second_stage_check
   aoa set_path
+  aoa set_ld
   cd $AOA_DIR
 fi
 

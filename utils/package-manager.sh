@@ -22,11 +22,38 @@ URL_BASE="http://mirror.archlinuxarm.org/aarch64"
 
 install() {
   local pkg=$1
+  patchelf_check
+  pkg_download_expand $pkg
+  pkg_ammend_so_path $pkg
+  pkg_ammend_interp $pkg
+}
+
+update() {
+  get_package_lists
+}
+
+patchelf_check() {
+  patchelf --version 2> /dev/null || patchelf_install
+}
+
+patchelf_install() {
+  local PKGS=$(echo -e "filesystem\nglibc\ngcc-libs\npatchelf")
+  for pkg in $PKGS; do
+    pkg_download_expand $pkg
+  done
+  local ld=$(find $AOA_DIR/lib/ld-linux*)
+  cp "$AOA_DIR/usr/bin/patchelf" "$AOA_DIR/usr/bin/patchelf.orig"
+  "$ld" "$AOA_DIR/usr/bin/patchelf.orig" --set-interpreter "$ld" "$AOA_DIR/usr/bin/patchelf"
+  patchelf --version && rm "$AOA_DIR/usr/bin/patchelf.orig"
+}
+
+pkg_download_expand() {
+  local pkg=$1
   local fn=""
   local fl=$AOA_DIR/pkginfo/$pkg.files
   mkdir -p $AOA_DIR/pkginfo
   if [ -f "$fl" ]; then
-    msg "Already installed: $1"
+    msg "Already installed: $pkg"
   else
     get_package_rep_and_filename $pkg
     if [ -n "$PKG_FILENAME" ]; then
@@ -39,14 +66,21 @@ install() {
       local pdir=$PWD
       cd $AOA_DIR
       xzcat $fn | tar -xv > "$fl"
-      mv .PKGINFO "pkginfo/$1.PKGINFO"
+      mv .PKGINFO "pkginfo/$pkg.PKGINFO"
       cd $pdir
     fi
   fi
 }
 
-update() {
-  get_package_lists
+pkg_ammend_so_path() {
+  echo
+}
+
+pkg_ammend_interp() {
+  local pkg=$1
+  for fn in $(cat $AOA_DIR/pkginfo/$pkg.files); do
+    patch_elf --print-interpreter "$fn" && patch_elf --set-interpreter "$ARCH_LD" "$fn"
+  done
 }
 
 get_db() {
@@ -68,7 +102,7 @@ get_index() {
 get_hrefs() {
   local url=$1
   echo $url | busybox grep '://' || url=http://mirror.archlinuxarm.org/$url
-  wget $url -O - 2> /dev/null | sed -n "s|.*href=\"||p" | sed "s|\".*||" | sed "s|^./||"
+  wget $url -O - | sed -n "s|.*href=\"||p" | sed "s|\".*||" | sed "s|^./||"
 }
 
 get_package_list() {
