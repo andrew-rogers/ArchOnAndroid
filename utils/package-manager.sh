@@ -255,3 +255,13 @@ make-bin SHELL=$UTILS_BIN/sh \$@
 EOF
   chmod +x "$fn"
 }
+
+set_shebang()
+{
+  local fn="$1"
+  local sb="#!$(which sh)"
+  local sbf=$(head -n1 "$fn")
+  if [ "$sbf" != "$sb" ];then
+    sed -i "1s|#!.*|$sb|" "$fn"
+  fi
+}
