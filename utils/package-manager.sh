@@ -52,6 +52,17 @@ install_deps() {
       test_gcc
     ;;
 
+    "make" )
+      install guile
+      install gc
+      install libffi
+      install libunistring
+      install libtool
+      install libatomic_ops
+      install_pkg make
+      postinst_make
+    ;;
+
     * )
       install_pkg "$pkg"
 
@@ -231,4 +242,16 @@ EOF
   gcc test.c
   ./a.out
   cd "$pdir"
+}
+
+postinst_make() {
+  # Make a wrapper for make to set the SHELL variable.
+  local fn="$AOA_DIR/usr/bin/make"
+  [ ! -f "$fn-bin" ] && mv "$fn" "$fn-bin"
+  cat << EOF > "$fn"
+#!$UTILS_BIN/sh
+
+make-bin SHELL=$UTILS_BIN/sh \$@
+EOF
+  chmod +x "$fn"
 }
