@@ -42,6 +42,37 @@ msg()
   echo "$1" 1>&2
 }
 
+# Add setting to global settings file.
+add_setting()
+{
+  local name="export $1"
+  local val="$2"
+  local file="$AOA_DIR/etc/aoa-settings.sh"
+
+  [ -z "$name" ] && return
+  [ -z "$val" ] && return
+
+  if [ -f "$file" ]; then
+    # Check if variable name and val already in settings
+    busybox grep "^$name=$val$" "$file" > /dev/null
+    if [ $? -ne 0 ]; then
+      # Check is variable name exists
+      busybox grep "^$name=" "$file" > /dev/null
+      if [ $? -eq 0 ]; then
+        # Variable name exists so just substitute value
+        sed -i "s|^$name=.*|$name=$val|" "$file"
+      else
+	# Variable doesn't exist so append
+        echo "$name=$val" >> "$file"
+      fi
+    fi
+  else
+    # Settings file doesn't exist so create it and append
+    mkdir -p "$AOA_DIR/etc"
+    echo "$name=$val" > "$file"
+  fi
+}
+
 second_stage_check()
 {
   busybox_check

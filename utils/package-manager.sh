@@ -47,9 +47,7 @@ install_deps() {
       install linux-api-headers
       install binutils
       install_pkg gcc
-      local dst=$(find "$AOA_DIR/usr/lib/gcc/" | sed -n 's=/lto-wrapper==p')/specs
-      gcc -dumpspecs | sed "s=/lib=$AOA_DIR/lib=g" > "$dst"
-      test_gcc
+      postinst_gcc
     ;;
 
     "make" )
@@ -242,6 +240,14 @@ EOF
   gcc test.c
   ./a.out
   cd "$pdir"
+}
+
+postinst_gcc() {
+  local dst=$(find "$AOA_DIR/usr/lib/gcc/" | sed -n 's=/lto-wrapper==p')/specs
+  gcc -dumpspecs | sed "s=/lib=$AOA_DIR/lib=g" > "$dst"
+  local vers=$(find "$AOA_DIR/usr/include/c++/" | sed -n "s|vector$||p" | sed "s|.*/c++/||" | sed "s|/.*||" | head -n1)
+  aoa add_setting CPLUS_INCLUDE_PATH "$AOA_DIR/usr/include/c++/$vers:$AOA_DIR/usr/include"
+  test_gcc
 }
 
 postinst_make() {

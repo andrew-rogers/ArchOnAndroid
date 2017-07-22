@@ -136,12 +136,19 @@ aoa() {
       fi
     ;;
 
+    "include_settings" )
+      if [ -f "$AOA_DIR/etc/aoa-settings.sh" ]; then
+        . "$AOA_DIR/etc/aoa-settings.sh"
+      fi
+    ;;
+
     * )
       # Run the second-stage script for commands not defined here
       local script=$(aoa get_script second-stage)
       local aoa_setup=$(aoa get_script aoa-setup)
       sh $script $aoa_setup $cmd $*
       aoa set_ld
+      aoa include_settings
   esac
 }
 
@@ -157,6 +164,7 @@ else
   aoa second_stage_check
   aoa set_path
   aoa set_ld
+  aoa include_settings
   cd $AOA_DIR
 fi
 
