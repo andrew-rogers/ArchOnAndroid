@@ -148,14 +148,17 @@ pkg_ammend_so_path() {
 
 pkg_ammend_interp() {
   local pkg=$1
-  local ld=$(find $AOA_DIR/lib/ld-linux*)
-  for fn in $(cat $AOA_DIR/pkginfo/$pkg.files); do
+  local pdir="$PWD"
+  cd "$AOA_DIR"
+  local ld="$AOA_DIR/$(find lib/ld-linux*)"
+  for fn in $(cat pkginfo/$pkg.files); do
     if [ -x "$fn" ]; then
       if [ -f "$fn" ]; then
         patchelf --set-interpreter "$ld" "$fn" 2> /dev/null
       fi
     fi
   done
+  cd "$pdir"
 }
 
 get_db() {
