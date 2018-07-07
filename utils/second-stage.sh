@@ -73,9 +73,53 @@ add_setting()
   fi
 }
 
+wget_check()
+{
+  if [ ! -e "$UTILS_BIN/wget" ]; then
+    mkdir -p "$UTILS_BIN"
+
+    # Get the path to wget
+    local wget_path=$(which wget)
+
+    # If wget is not in path then relocate the wget that aoa-setup downloaded
+    if [ -z "$wget_path" ]; then
+      if [ -e "$WRITABLE_DIR/wget" ]; then
+        wget_path="$UTILS_BIN/wget-bin"
+        mv "$WRITABLE_DIR/wget" "$wget_path"
+      fi
+    fi
+
+    # Create wrapper for wget
+    if [ -e "$wget_path" ]; then
+      echo "#!$UTILS_BIN/sh" > $UTILS_BIN/wget
+      echo "" >> $UTILS_BIN/wget
+      echo "( unset LD_LIBRARY_PATH; $wget_path \$* )" >> $UTILS_BIN/wget
+      chmod +x $UTILS_BIN/wget
+    fi
+  fi
+}
+
+export_path()
+{
+  local bb_path=$(which busybox)
+  local path="$UTILS_BIN:$AOA_DIR/usr/bin"
+  if [ -e "$bb_path" ]; then
+    bb_path=${bb_path%/*}
+    if [ -d "$bb_path" ]; then
+      if [ "$bb_path" != "$UTILS_BIN" ]; then
+        path="$path:$bb_path"
+      fi
+    fi
+  fi
+  PATH="$path"
+  add_setting "PATH" "$PATH"
+}
+
 second_stage_check()
 {
   busybox_check
+  export_path
+  wget_check
 }
 
 $CMD $*

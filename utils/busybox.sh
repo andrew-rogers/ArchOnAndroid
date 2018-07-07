@@ -79,24 +79,6 @@ aoa_busybox_install() {
   
   msg "Making symlinks for busybox applets, could take a while."
   aoa_busybox_symlinks
-  aoa_busybox_replace_wget
-}
-
-aoa_busybox_replace_wget() {
-  local WGET_PATH=$UTILS_BIN/wget-bin
-  $UTILS_BIN/$BB rm $UTILS_BIN/wget
-  if [ -e "/usr/bin/wget" ]; then
-    WGET_PATH=/usr/bin/wget 
-  elif [ -e "$WRITABLE_DIR/wget" ]; then
-    # Move the Android compatible wget
-    $UTILS_BIN/$BB mv $WRITABLE_DIR/wget $WGET_PATH
-  fi
-
-  # Create wrapper for wget
-  echo "#!$UTILS_BIN/sh" > $UTILS_BIN/wget
-  echo "" >> $UTILS_BIN/wget
-  echo "( unset LD_LIBRARY_PATH; $WGET_PATH \$* )" >> $UTILS_BIN/wget
-  $UTILS_BIN/$BB chmod +x $UTILS_BIN/wget
 }
 
 aoa_busybox_symlink() {
@@ -111,11 +93,17 @@ aoa_busybox_symlink() {
 aoa_busybox_symlinks() {
   for app in $($UTILS_BIN/$BB --list)
   do
-    aoa_busybox_symlink "$app"
+    # Create links for all apps except wget, the busybox wget doesn't work on android.
+    if [ "$app" != "wget" ]; then
+      aoa_busybox_symlink "$app"
+    fi
   done
 }
 
 busybox_check() {
-  $UTILS_BIN/$BB true 2> /dev/null || aoa_busybox_install
+  busybox true 2> /dev/null
+  if [ $? -ne 0 ]; then
+    $UTILS_BIN/$BB true 2> /dev/null || aoa_busybox_install
+  fi
 }
 

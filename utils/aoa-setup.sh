@@ -28,12 +28,6 @@ aoa() {
 
   case $cmd in
 
-    "set_path" )
-      if [ -d "$AOA_DIR" ]; then
-        PATH=$UTILS_BIN:$AOA_DIR/usr/bin
-      fi
-    ;;
-
     "cd" )
       if [ -d "$AOA_DIR" ]; then
         cd "$AOA_DIR"
@@ -74,22 +68,22 @@ aoa() {
         echo "$UTILS_BIN/wget"
       elif [ -e "$WRITABLE_DIR/wget" ]; then
         echo "$WRITABLE_DIR/wget"
-      elif [ -e "/usr/bin/wget" ]; then
-        echo "/usr/bin/wget"
+      else
+        wget --version > /dev/null && echo "wget"
       fi
+        
     ;;
 
     "install_wget" )
-      if [ -e "$WRITABLE_DIR/wget" ]; then
-        chmod 755 "$WRITABLE_DIR/wget"
-      else # not in $WRITABLE_DIR/wget so copy from download directory
+      if [ ! -e "$WRITABLE_DIR/wget" ]; then
+        # not in $WRITABLE_DIR/wget so copy from download directory
         [ ! -f "$WGET_DL" ] && echo "Can't find: $WGET_DL" && return 1
         echo "Found wget at: $WGET_DL"
     
         # Android may not have cp, use cat
         cat "$WGET_DL" > "$WRITABLE_DIR/wget"
-        chmod 755 "$WRITABLE_DIR/wget"
       fi
+      chmod 755 "$WRITABLE_DIR/wget"
     ;;
 
     "check_wget" )
@@ -104,6 +98,10 @@ aoa() {
         dst_dir=$dst_dir/$2
       fi
       local fn=${url##*/} # Get the filename from the end of the URL.
+
+      # Some Arch packages have + or : in them which are url encoded, decode them for filename.
+      local fn1=$(echo "$fn" | sed "s/%2b/+/" | sed "s/%3a/:/" 2> /dev/null)
+      [ -n "$fn1" ] && fn="$fn1";
       if [ -z "$fn" ]; then
         fn=index.html
       fi
@@ -160,11 +158,11 @@ if [ -n "$AOA_SETUP" ]; then
 else
   export AOA_DIR=$(aoa find_writable_install_dir)/ArchOnAndroid
   export C_INCLUDE_PATH=$AOA_DIR/usr/include
-  aoa check_wget > /dev/null
+  aoa check_wget #> /dev/null
   aoa second_stage_check
-  aoa set_path
   aoa set_ld
   aoa include_settings
   cd $AOA_DIR
 fi
+
 
