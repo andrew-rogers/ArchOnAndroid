@@ -258,7 +258,7 @@ postinst_make() {
   local fn="$AOA_DIR/usr/bin/make"
   [ ! -f "$fn-bin" ] && mv "$fn" "$fn-bin"
   cat << EOF > "$fn"
-#!$UTILS_BIN/sh
+#!$(which sh)
 
 make-bin SHELL=$UTILS_BIN/sh \$@
 EOF

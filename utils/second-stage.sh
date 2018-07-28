@@ -91,7 +91,7 @@ wget_check()
 
     # Create wrapper for wget
     if [ -e "$wget_path" ]; then
-      echo "#!$UTILS_BIN/sh" > $UTILS_BIN/wget
+      echo "#!$(which sh)" > $UTILS_BIN/wget
       echo "" >> $UTILS_BIN/wget
       echo "( unset LD_LIBRARY_PATH; $wget_path \$* )" >> $UTILS_BIN/wget
       chmod +x $UTILS_BIN/wget

@@ -100,7 +100,7 @@ aoa() {
       local fn=${url##*/} # Get the filename from the end of the URL.
 
       # Some Arch packages have + or : in them which are url encoded, decode them for filename.
-      local fn1=$(echo "$fn" | sed "s/%2b/+/" | sed "s/%3a/:/" 2> /dev/null)
+      local fn1=$(echo "$fn" | sed "s/%2b/+/g" | sed "s/%3a/:/g" 2> /dev/null)
       [ -n "$fn1" ] && fn="$fn1";
       if [ -z "$fn" ]; then
         fn=index.html
@@ -155,14 +155,15 @@ if [ -n "$AOA_SETUP" ]; then
   WRITABLE_DIR=${AOA_DIR%/*}
   UTILS_BIN=$AOA_DIR/utils/bin
   AOA_CACHE=$(aoa find_writable_download_dir)
-else
+fi
+
+if [ ! -d "$AOA_DIR" ]; then
   export AOA_DIR=$(aoa find_writable_install_dir)/ArchOnAndroid
-  export C_INCLUDE_PATH=$AOA_DIR/usr/include
-  aoa check_wget #> /dev/null
+  export C_INCLUDE_PATH="$AOA_DIR/usr/include"
+  aoa check_wget > /dev/null
   aoa second_stage_check
   aoa set_ld
   aoa include_settings
   cd $AOA_DIR
 fi
-
 
