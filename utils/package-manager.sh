@@ -260,7 +260,7 @@ postinst_make() {
   cat << EOF > "$fn"
 #!$(which sh)
 
-make-bin SHELL=$UTILS_BIN/sh \$@
+make-bin SHELL=$(which sh) \$@
 EOF
   chmod +x "$fn"
 }
