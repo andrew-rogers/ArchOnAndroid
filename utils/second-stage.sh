@@ -113,6 +113,8 @@ export_path()
   fi
   PATH="$path"
   add_setting "PATH" "$PATH"
+  add_setting "LD_LIBRARY_PATH" "$AOA_DIR/lib"
+  add_setting "LD_PRELOAD" "''"
 }
 
 second_stage_check()
