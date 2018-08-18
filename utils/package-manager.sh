@@ -17,7 +17,7 @@
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 REPS=$(echo -e "community\nextra\ncore")
-PKG_DIR=$(aoa find_writable_download_dir)/packages
+PKG_DIR="$CACHE_DIR/packages"
 URL_BASE="http://mirror.archlinuxarm.org/aarch64"
 
 install() {
@@ -25,7 +25,7 @@ install() {
   local pkg=$1
   local fl=$AOA_DIR/pkginfo/$pkg.files
   if [ -f "$fl" ]; then
-    msg "Already installed: $pkg"
+    echo "Already installed: $pkg" >&2
   else
     install_deps "$pkg"
   fi
@@ -95,28 +95,24 @@ patchelf_install() {
       pkg_ammend_so_path "$pkg"
     done
   else
-    error "Could not successfully install patchelf."
+    echo "Could not successfully install patchelf." >&2
   fi    
 }
 
 pkg_download_expand() {
-  local pkg=$1
-  local fn=""
+  local pkg="$1"
   local fl=$AOA_DIR/pkginfo/$pkg.files
   mkdir -p $AOA_DIR/pkginfo
   if [ -f "$fl" ]; then
-    msg "Already installed: $pkg"
+    echo "Already installed: $pkg" >&2
   else
-    get_package_rep_and_filename $pkg
-    if [ -n "$PKG_FILENAME" ]; then
-      fn=$(aoa download $URL_BASE/$PKG_REP/$PKG_FILENAME packages/$PKG_REP)
-    fi
+    local fn=$(pkg_download "$pkg")
     if [ -z "$fn" ]; then
-      msg "Could not find '$pkg', try running 'aoa update' and check package name."
+      echo "Could not find '$pkg', try running 'aoa update' and check package name." >&2
     else
       # The actual package expansion
       local pdir=$PWD
-      msg "Expanding package: $fn"
+      echo "Expanding package: $fn" >&2
       cd $AOA_DIR
       xzcat $fn | tar -xv > "$fl"
       mv .PKGINFO "pkginfo/$pkg.PKGINFO"
@@ -125,8 +121,37 @@ pkg_download_expand() {
   fi
 }
 
+pkg_download()
+{
+  local pkg="$1"
+  get_package_rep_and_filename "$pkg"
+  local dst_dir="$CACHE_DIR/packages/$PKG_REP"
+  local url="$URL_BASE/$PKG_REP/$PKG_FILENAME"
+  local fn="$PKG_FILENAME"
+
+  if [ -n "$fn" ]; then
+
+    # Some Arch packages have + or : in them which are url encoded, decode them for filename.
+    local fn1=$(echo "$fn" | sed "s/%2b/+/g" | sed "s/%3a/:/g" 2> /dev/null)
+    [ -n "$fn1" ] && fn="$fn1"
+
+    # If not already downloaded to cache then download
+    if [ ! -e "$dst_dir/$fn" ]; then
+      wget --no-clobber --no-check-certificate --directory-prefix=$dst_dir $url
+    fi
+
+    # If downloaded then return the path
+    if [ -e "$dst_dir/$fn" ]; then
+      echo "$dst_dir/$fn"
+    fi
+
+  fi
+}
+
 pkg_ammend_so_path() {
   local pkg=$1
+  local prev_dir="$PWD"
+  cd "$AOA_DIR"
   for fn in $(cat $AOA_DIR/pkginfo/$pkg.files); do
     if [ -f "$fn" ]; then
       # Check that file is not a symbolic link
@@ -144,6 +169,7 @@ pkg_ammend_so_path() {
       fi
     fi
   done
+  cd "$prev_dir"
 }
 
 pkg_ammend_interp() {
@@ -162,7 +188,7 @@ pkg_ammend_interp() {
 }
 
 get_db() {
-  local db=$(aoa download http://mirror.archlinuxarm.org/aarch64/$1/$1.db packages)
+  local db=$(download http://mirror.archlinuxarm.org/aarch64/$1/$1.db packages)
   if [ -f "$db" ]; then
     local pdir=$PWD
     local db_dir=$AOA_DIR/var/lib/pacman/sync/$1.d
@@ -174,7 +200,7 @@ get_db() {
 }
 
 get_index() {
-  aoa download http://mirror.archlinuxarm.org/aarch64/core/ packages/core
+  download http://mirror.archlinuxarm.org/aarch64/core/ packages/core
 }
 
 get_hrefs() {
@@ -239,7 +265,7 @@ int main( int argc, char *arg[] )
 }
 EOF
 
-  msg "Compiling test.c"
+  echo "Compiling test.c" >&2
   gcc test.c
   ./a.out
   cd "$pdir"
@@ -249,7 +275,9 @@ postinst_gcc() {
   local dst=$(find "$AOA_DIR/usr/lib/gcc/" | sed -n 's=/lto-wrapper==p')/specs
   gcc -dumpspecs | sed "s=/lib=$AOA_DIR/lib=g" > "$dst"
   local vers=$(find "$AOA_DIR/usr/include/c++/" | sed -n "s|vector$||p" | sed "s|.*/c++/||" | sed "s|/.*||" | head -n1)
-  aoa add_setting CPLUS_INCLUDE_PATH "$AOA_DIR/usr/include/c++/$vers:$AOA_DIR/usr/include"
+  export C_INCLUDE_PATH="$AOA_DIR/usr/include"
+  add_setting C_INCLUDE_PATH "$C_INCLUDE_PATH"
+  add_setting CPLUS_INCLUDE_PATH "$AOA_DIR/usr/include/c++/$vers:$AOA_DIR/usr/include"
   test_gcc
 }
 
