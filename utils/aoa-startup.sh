@@ -41,7 +41,7 @@ aoa() {
   esac
 }
 
+aoa include_settings
 aoa wget_wrapper
 aoa create_settings
-aoa include_settings
 

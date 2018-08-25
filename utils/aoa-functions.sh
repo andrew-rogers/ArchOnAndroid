@@ -18,6 +18,7 @@
 
 CACHE_DIR="/sdcard/ArchOnAndroid/cache"
 UTILS_BIN="$AOA_DIR/utils/bin"
+SETTINGS="$AOA_DIR/etc/aoa-settings.sh"
 
 . $AOA_DIR/utils/package-manager.sh
 
@@ -105,10 +106,36 @@ add_setting()
   fi
 }
 
+get_setting()
+{
+  local name="export $1"
+  if [ -f "$SETTINGS" ]; then
+    local line="$(grep "^$name=" "$SETTINGS")"
+    echo "$line" | sed "s|^$name=||"
+  fi
+}
+
+add_path()
+{
+  # Check if PATH exists in settings
+  local path="$(get_setting PATH)"
+  if [ -z "$path" ]; then
+    # Create new PATH
+    path="$PATH"
+  fi
+
+  # Check if already in PATH
+  echo "$path" | grep "$1" > /dev/null
+  if [ $? -ne 0 ]; then
+    # Not in PATH
+    add_setting "PATH" "$1:$path"
+  fi
+}
+
 create_settings()
 {
-  local aoa_path="$UTILS_BIN:$AOA_DIR/usr/bin"
-  add_setting "PATH" "$aoa_path:$PATH"
+  add_path "$AOA_DIR/usr/bin"
+  add_path "$UTILS_BIN"
   add_setting "LD_LIBRARY_PATH" "$AOA_DIR/lib"
   add_setting "LD_PRELOAD" "''"
 }
